@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Playlists - Loopin Marketing Indoor</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/frontend/src/shared/theme.css">
+  <link rel="stylesheet" href="./playlists.css">
+</head>
+<body>
+  <div id="sidebar-container"></div>
+
+  <div class="main-layout">
+    <main class="content-area">
+      <div class="page-header">
+        <div class="header-title">
+          <h1>Gerenciamento de Playlists</h1>
+          <p class="text-muted">Organize e sequencie campanhas e conteúdo dinâmico</p>
+        </div>
+        <button id="btnOpenModal" class="btn btn-primary">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          Nova Playlist
+        </button>
+      </div>
+
+      <div class="filter-bar">
+        <div class="search-box">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" id="searchInput" placeholder="Buscar por nome de playlist...">
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Nome da Playlist</th>
+                <th>Descrição</th>
+                <th>Duração Total</th>
+                <th>Itens</th>
+                <th>Loop</th>
+                <th style="text-align: right;">Ações</th>
+              </tr>
+            </thead>
+            <tbody id="playlistsList">
+              <tr>
+                <td colspan="6" class="table-loading">
+                  <div class="spinner-small"></div>
+                  Carregando playlists...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div id="modalNewPlaylist" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Nova Playlist</h2>
+        <button class="btn-close-modal" id="btnCloseModal">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <form id="formNewPlaylist">
+        <div class="form-group">
+          <label for="playlistName">Nome da Playlist *</label>
+          <input type="text" id="playlistName" name="name" required placeholder="Ex: Playlist Manhã">
+        </div>
+        <div class="form-group">
+          <label for="playlistDescription">Descrição</label>
+          <input type="text" id="playlistDescription" name="description" placeholder="Ex: Conteúdo da manhã">
+        </div>
+        <div class="form-group checkbox-group">
+          <label>
+            <input type="checkbox" id="playlistLoop" name="loop" checked>
+            Ativar Loop Contínuo
+          </label>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btnCancelModal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar Playlist</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="modalEditPlaylist" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Editar Playlist</h2>
+        <button class="btn-close-modal" id="btnCloseEditModal">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <form id="formEditPlaylist">
+        <input type="hidden" id="editPlaylistId">
+        <div class="form-group">
+          <label for="editPlaylistName">Nome da Playlist *</label>
+          <input type="text" id="editPlaylistName" required>
+        </div>
+        <div class="form-group">
+          <label for="editPlaylistDescription">Descrição</label>
+          <input type="text" id="editPlaylistDescription">
+        </div>
+        <div class="form-group checkbox-group">
+          <label>
+            <input type="checkbox" id="editPlaylistLoop">
+            Ativar Loop Contínuo
+          </label>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btnCancelEditModal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="modalManageContent" class="modal-overlay">
+    <div class="modal-content large-modal"> <div class="modal-header">
+        <div>
+          <h2 id="manageTitle">Gerenciar Conteúdo</h2>
+          <p class="text-muted" style="margin: 0; font-size: 13px;">Arraste widgets para a direita</p>
+        </div>
+        <button class="btn-close-modal" id="btnCloseManageModal">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      
+      <div class="modal-body editor-grid">
+        <div class="panel library-panel">
+          <div class="panel-header-small">
+            <span>Biblioteca</span>
+            <input type="text" id="searchWidget" placeholder="Buscar..." class="mini-search">
+          </div>
+          <div class="panel-content">
+            <div id="libraryList" class="widget-list source-list">
+              <div class="spinner-small"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel playlist-panel">
+          <div class="panel-header-small">
+            <span>Sua Playlist</span>
+            <span class="badge-info" id="totalDuration">0s</span>
+          </div>
+          <div class="panel-content">
+            <div id="playlistItems" class="widget-list target-list">
+              </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="btnCancelManage">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="btnSaveContent">Salvar Conteúdo</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+  
+  <script src="/frontend/src/shared/config.js"></script>
+  <script src="/frontend/src/shared/utils.js"></script>
+  <script src="/frontend/src/shared/api-helpers.js"></script>
+  <script src="./playlists.js"></script>
+</body>
+</html>

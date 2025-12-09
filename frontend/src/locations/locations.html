@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Locais - Loopin Marketing Indoor</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- BASE GLOBAL -->
+  <link rel="stylesheet" href="/frontend/src/shared/theme.css">
+  <!-- CUSTOMIZAÇÕES DA PÁGINA -->
+  <link rel="stylesheet" href="./locations.css">
+</head>
+<body>
+  <!-- SIDEBAR -->
+  <div id="sidebar-container"></div>
+
+  <!-- LAYOUT PRINCIPAL -->
+  <div class="main-layout">
+    <main class="content-area">
+      <!-- HEADER -->
+      <div class="page-header">
+        <div class="header-title">
+          <h1>Gerenciamento de Locais</h1>
+          <p class="text-muted">Cadastre e gerencie os estabelecimentos onde suas telas estão instaladas</p>
+        </div>
+        <button id="btnOpenModal" class="btn btn-primary">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          Novo Local
+        </button>
+      </div>
+
+      <!-- FILTROS -->
+      <div class="filter-bar">
+        <div class="search-box">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" id="searchInput" placeholder="Buscar por nome, endereço ou responsável...">
+        </div>
+      </div>
+
+      <!-- TABELA -->
+      <div class="card">
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Nome do Local</th>
+                <th>Endereço</th>
+                <th>Qtd. Telas</th>
+                <th>Responsável</th>
+                <th>Contato</th>
+                <th style="text-align: right;">Ações</th>
+              </tr>
+            </thead>
+            <tbody id="locationsList">
+              <tr>
+                <td colspan="6" class="table-loading">
+                  <div class="spinner-small"></div>
+                  Carregando locais...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- MODAL - CRIAR -->
+  <div id="modalNewLocation" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Novo Local</h2>
+        <button class="btn-close-modal" id="btnCloseModal">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <form id="formNewLocation">
+        <div class="form-group">
+          <label for="locationName">Nome do Estabelecimento *</label>
+          <input type="text" id="locationName" name="name" required placeholder="Ex: Academia Fit - Centro">
+        </div>
+
+        <div class="form-group">
+          <label for="locationAddress">Endereço Completo</label>
+          <input type="text" id="locationAddress" name="address" placeholder="Rua, Número, Bairro, Cidade">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group half">
+            <label for="managerName">Nome do Responsável</label>
+            <input type="text" id="managerName" name="manager_name" placeholder="Ex: João Silva">
+          </div>
+          <div class="form-group half">
+            <label for="managerPhone">Telefone / WhatsApp</label>
+            <input type="text" id="managerPhone" name="manager_phone" placeholder="(00) 00000-0000">
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btnCancelModal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar Local</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL - EDITAR -->
+  <div id="modalEditLocation" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Editar Local</h2>
+        <button class="btn-close-modal" id="btnCloseEditModal">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <form id="formEditLocation">
+        <input type="hidden" id="editLocationId">
+
+        <div class="form-group">
+          <label for="editLocationName">Nome do Estabelecimento *</label>
+          <input type="text" id="editLocationName" required>
+        </div>
+
+        <div class="form-group">
+          <label for="editLocationAddress">Endereço Completo</label>
+          <input type="text" id="editLocationAddress">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group half">
+            <label for="editManagerName">Nome do Responsável</label>
+            <input type="text" id="editManagerName">
+          </div>
+          <div class="form-group half">
+            <label for="editManagerPhone">Telefone / WhatsApp</label>
+            <input type="text" id="editManagerPhone">
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btnCancelEditModal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- SCRIPTS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/frontend/src/shared/config.js"></script>
+  <script src="/frontend/src/shared/utils.js"></script>
+  <script src="/frontend/src/shared/api-helpers.js"></script>
+  <script src="./locations.js"></script>
+</body>
+</html>

@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Configurações - Loopin Marketing Indoor</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/frontend/src/shared/theme.css">
+  <link rel="stylesheet" href="./settings.css">
+</head>
+<body>
+  <div id="sidebar-container"></div>
+
+  <div class="main-layout">
+    <main class="content-area">
+      <div class="page-header">
+        <div class="header-title">
+          <h1>Configurações do Sistema</h1>
+          <p class="text-muted">Personalize sua experiência e dados da organização</p>
+        </div>
+      </div>
+
+      <!-- ORGANIZAÇÃO -->
+      <div class="card">
+        <div class="card-header">
+          <h2>Dados da Organização</h2>
+        </div>
+        <form id="formOrganization">
+          <div class="form-group">
+            <label for="orgName">Nome da Organização</label>
+            <input type="text" id="orgName" placeholder="Ex: Minha Empresa">
+          </div>
+
+          <div class="form-group">
+            <label for="orgLogo">URL da Logo</label>
+            <input type="text" id="orgLogo" placeholder="https://exemplo.com/logo.png">
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="colorPrimary">Cor Primária</label>
+              <div class="color-input-group">
+                <input type="color" id="colorPrimary" value="#1EAF6A">
+                <input type="text" id="colorPrimaryText" value="#1EAF6A" placeholder="#1EAF6A">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="colorSecondary">Cor Secundária</label>
+              <div class="color-input-group">
+                <input type="color" id="colorSecondary" value="#667EEA">
+                <input type="text" id="colorSecondaryText" value="#667EEA" placeholder="#667EEA">
+              </div>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary">Salvar Configurações</button>
+        </form>
+      </div>
+
+      <!-- APIs -->
+      <div class="card">
+        <div class="card-header">
+          <h2>Chaves de API</h2>
+        </div>
+        <form id="formAPIs">
+          <div class="form-group">
+            <label for="apiWeather">Chave API Clima (OpenWeather)</label>
+            <input type="password" id="apiWeather" placeholder="Cole sua chave aqui">
+            <small style="color: #718096; margin-top: 4px;">Deixe em branco para não usar</small>
+          </div>
+
+          <div class="form-group">
+            <label for="apiNews">Chave API Notícias (NewsAPI)</label>
+            <input type="password" id="apiNews" placeholder="Cole sua chave aqui">
+            <small style="color: #718096; margin-top: 4px;">Deixe em branco para não usar</small>
+          </div>
+
+          <button type="submit" class="btn btn-primary">Salvar Chaves</button>
+        </form>
+      </div>
+
+      <!-- PERIGO -->
+      <div class="card danger-zone">
+        <div class="card-header">
+          <h2>Zona de Perigo</h2>
+        </div>
+        <div class="form-group">
+          <p style="color: #718096; margin-bottom: 16px;">Estas ações são irreversíveis. Tenha cuidado!</p>
+          <button type="button" id="btnClearCache" class="btn btn-secondary">🔄 Limpar Cache</button>
+          <button type="button" id="btnExportData" class="btn btn-secondary">📥 Exportar Dados</button>
+          <button type="button" id="btnLogout" class="btn" style="background-color: #EF4444; color: white;">🚪 Sair da Conta</button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/frontend/src/shared/config.js"></script>
+  <script src="/frontend/src/shared/utils.js"></script>
+  <script src="/frontend/src/shared/api-helpers.js"></script>
+  <script src="./settings.js"></script>
+</body>
+</html>

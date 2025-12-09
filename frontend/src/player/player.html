@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Loopin TV Player</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./player.css">
+</head>
+<body>
+
+  <div id="setupScreen" class="setup-screen hidden">
+    <div class="setup-box">
+      <div class="logo-area">Loopin TV</div>
+      <p class="instruction">Para ativar esta tela, acesse o painel e cadastre o código:</p>
+      
+      <div class="pairing-code" id="pairingCode">...</div>
+      
+      <div class="status-line">
+        <div class="spinner-tiny"></div>
+        <span>Aguardando vinculação...</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="loadingScreen" class="loading-screen hidden">
+    <div class="loader"></div>
+    <p id="loadingText">Carregando...</p>
+    <small id="loadingSubtext"></small>
+  </div>
+
+  <div id="playerContainer" class="hidden">
+    <div id="slot1" class="media-slot active"></div>
+    <div id="slot2" class="media-slot"></div>
+
+    <div class="widgets-layer">
+      <div class="widget-box top-right">
+        <div id="weatherWidget" class="weather-info hidden">
+          <img id="weatherIcon" src="" alt="">
+          <span id="weatherTemp">--°</span>
+        </div>
+        <div class="time-info">
+          <div id="clockTime" class="clock-time">--:--</div>
+          <div id="clockDate" class="clock-date">--/--</div>
+        </div>
+      </div>
+      
+      <div class="branding-layer">
+        <img id="orgLogo" src="" alt="" class="hidden">
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/frontend/src/shared/config.js"></script> 
+  <script src="./player.js"></script>
+</body>
+</html>

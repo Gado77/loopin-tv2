@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Telas - Loopin Marketing Indoor</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/frontend/src/shared/theme.css">
+  <link rel="stylesheet" href="./screens.css">
+</head>
+<body>
+  <div id="sidebar-container"></div>
+
+  <div class="main-layout">
+    <main class="content-area">
+      <div class="page-header">
+        <div class="header-title">
+          <h1>Gerenciamento de Telas</h1>
+          <p class="text-muted">Monitore, edite e configure seus pontos de exibição</p>
+        </div>
+        <button id="btnOpenModal" class="btn btn-primary">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          Nova Tela
+        </button>
+      </div>
+
+      <div class="filter-bar">
+        <div class="search-box">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" id="searchInput" placeholder="Buscar por nome, ID ou local...">
+        </div>
+        <select id="statusFilter" class="filter-select">
+          <option value="all">Todos os Status</option>
+          <option value="online">Online</option>
+          <option value="offline">Offline</option>
+        </select>
+      </div>
+
+      <div class="card">
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Status</th>
+                <th>Nome da Tela</th>
+                <th>Localização</th>
+                <th>ID do Dispositivo</th>
+                <th>Playlist Ativa</th>
+                <th style="text-align: right;">Ações</th>
+              </tr>
+            </thead>
+            <tbody id="screensList">
+              <tr>
+                <td colspan="6" class="table-loading">
+                  <div class="spinner-small"></div>
+                  Carregando telas...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div id="modalNewScreen" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Adicionar Nova Tela</h2>
+        <button class="btn-close-modal" id="btnCloseModal">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <form id="formNewScreen" style="display: flex; flex-direction: column; height: 100%; overflow: hidden;">
+        <div class="modal-body-scroll">
+          
+          <div class="form-group" style="background: #EBF8FF; padding: 15px; border-radius: 8px; border: 1px solid #BEE3F8;">
+            <label for="screenDeviceId" style="color: #2C5282;">Código de Pareamento *</label>
+            <input type="text" id="screenDeviceId" name="device_id" required placeholder="Ex: TELA-A1B2C3" style="font-family: monospace; font-weight: bold; text-transform: uppercase;">
+            <small style="color: #4A5568;">Digite o código exibido na TV.</small>
+          </div>
+
+          <div class="form-group">
+            <label for="screenName">Nome da Tela *</label>
+            <input type="text" id="screenName" name="name" required placeholder="Ex: TV Recepção">
+          </div>
+
+          <div class="form-group">
+            <label for="screenLocation">Localização *</label>
+            <select id="screenLocation" name="location_id" required>
+              <option value="">Carregando locais...</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="newScreenPlaylist">Playlist Padrão</label>
+            <select id="newScreenPlaylist" name="active_playlist_id">
+              <option value="">Nenhuma playlist selecionada</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="screenOrientation">Orientação</label>
+            <select id="screenOrientation" name="orientation">
+              <option value="landscape">Horizontal (Paisagem)</option>
+              <option value="portrait">Vertical (Retrato)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btnCancelModal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Vincular Tela</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="modalEditScreen" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Editar Tela</h2>
+        <button class="btn-close-modal" id="btnCloseEditModal">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <form id="formEditScreen" style="display: flex; flex-direction: column; height: 100%; overflow: hidden;">
+        <div class="modal-body-scroll">
+          <input type="hidden" id="editScreenId">
+
+          <div class="form-group">
+            <label>ID do Dispositivo</label>
+            <input type="text" id="editScreenDeviceId" disabled style="background: #EDF2F7; color: #718096;">
+          </div>
+
+          <div class="form-group">
+            <label for="editScreenName">Nome da Tela *</label>
+            <input type="text" id="editScreenName" required>
+          </div>
+
+          <div class="form-group">
+            <label for="editScreenLocation">Localização *</label>
+            <select id="editScreenLocation" required>
+              <option value="">Carregando locais...</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="editScreenPlaylist">Playlist Padrão</label>
+            <select id="editScreenPlaylist">
+              <option value="">Nenhuma playlist selecionada</option>
+            </select>
+            <small style="color: #718096; margin-top: 4px;">Altere a playlist que roda nesta tela.</small>
+          </div>
+
+          <div class="form-group">
+            <label for="editScreenOrientation">Orientação</label>
+            <select id="editScreenOrientation">
+              <option value="landscape">Horizontal (Paisagem)</option>
+              <option value="portrait">Vertical (Retrato)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btnCancelEditModal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/frontend/src/shared/config.js"></script>
+  <script src="/frontend/src/shared/utils.js"></script>
+  <script src="/frontend/src/shared/api-helpers.js"></script>
+  <script src="./screens.js"></script>
+</body>
+</html>

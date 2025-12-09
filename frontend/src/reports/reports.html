@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Relatórios - Loopin Marketing Indoor</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/frontend/src/shared/theme.css">
+  <link rel="stylesheet" href="./reports.css">
+</head>
+<body>
+  <div id="sidebar-container"></div>
+
+  <div class="main-layout">
+    <main class="content-area">
+      <div class="page-header">
+        <div class="header-title">
+          <h1>Relatórios e Estatísticas</h1>
+          <p class="text-muted">Visualize dados de exibição e desempenho de campanhas</p>
+        </div>
+        <button id="btnExportCSV" class="btn btn-primary">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          Exportar CSV
+        </button>
+      </div>
+
+      <div class="filter-bar">
+        <div class="filter-group">
+          <label>Data Início:</label>
+          <input type="date" id="filterStartDate">
+        </div>
+        <div class="filter-group">
+          <label>Data Fim:</label>
+          <input type="date" id="filterEndDate">
+        </div>
+        <button id="btnFilter" class="btn btn-small">Filtrar</button>
+      </div>
+
+      <!-- KPI CARDS -->
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-content">
+            <div class="kpi-label">Total de Visualizações</div>
+            <div class="kpi-value" id="totalViews">0</div>
+          </div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-content">
+            <div class="kpi-label">Tempo Exibido (horas)</div>
+            <div class="kpi-value" id="totalHours">0h</div>
+          </div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-content">
+            <div class="kpi-label">Campanhas Exibidas</div>
+            <div class="kpi-value" id="totalCampaigns">0</div>
+          </div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-content">
+            <div class="kpi-label">Telas Ativas</div>
+            <div class="kpi-value" id="totalScreens">0</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TABELAS -->
+      <div class="reports-grid">
+        <div class="card">
+          <div class="card-header">
+            <h2>Campanhas Mais Visualizadas</h2>
+          </div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Campanha</th>
+                  <th>Visualizações</th>
+                  <th>Tempo Total (s)</th>
+                </tr>
+              </thead>
+              <tbody id="topCampaigns">
+                <tr><td colspan="3" class="table-loading"><div class="spinner-small"></div> Carregando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2>Telas com Melhor Desempenho</h2>
+          </div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Tela</th>
+                  <th>Visualizações</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="topScreens">
+                <tr><td colspan="3" class="table-loading"><div class="spinner-small"></div> Carregando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/frontend/src/shared/config.js"></script>
+  <script src="/frontend/src/shared/utils.js"></script>
+  <script src="/frontend/src/shared/api-helpers.js"></script>
+  <script src="./reports.js"></script>
+</body>
+</html>

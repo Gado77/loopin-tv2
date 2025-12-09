@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Anunciantes - Loopin Marketing Indoor</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/frontend/src/shared/theme.css">
+  <link rel="stylesheet" href="./advertisers.css">
+</head>
+<body>
+  <div id="sidebar-container"></div>
+
+  <div class="main-layout">
+    <main class="content-area">
+      <div class="page-header">
+        <div class="header-title">
+          <h1>Gerenciamento de Anunciantes</h1>
+          <p class="text-muted">Cadastre e gerencie seus clientes e parceiros</p>
+        </div>
+        <button id="btnOpenModal" class="btn btn-primary">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          Novo Anunciante
+        </button>
+      </div>
+
+      <div class="filter-bar">
+        <div class="search-box">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" id="searchInput" placeholder="Buscar por nome ou contato...">
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Categoria</th>
+                <th>Contato</th>
+                <th>Email</th>
+                <th>Telefone</th>
+                <th style="text-align: right;">Ações</th>
+              </tr>
+            </thead>
+            <tbody id="advertisersList">
+              <tr>
+                <td colspan="6" class="table-loading">
+                  <div class="spinner-small"></div>
+                  Carregando anunciantes...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- MODAL - CRIAR -->
+  <div id="modalNewAdvertiser" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Novo Anunciante</h2>
+        <button class="btn-close-modal" id="btnCloseModal">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <form id="formNewAdvertiser">
+        <div class="form-group">
+          <label for="advertiserName">Nome do Anunciante *</label>
+          <input type="text" id="advertiserName" name="name" required placeholder="Ex: Empresa XYZ">
+        </div>
+
+        <div class="form-group">
+          <label for="advertiserCategory">Categoria</label>
+          <input type="text" id="advertiserCategory" name="category" placeholder="Ex: Varejo, Serviços">
+        </div>
+
+        <div class="form-group">
+          <label for="advertiserContactName">Nome do Contato</label>
+          <input type="text" id="advertiserContactName" name="contact_name" placeholder="Ex: João Silva">
+        </div>
+
+        <div class="form-group">
+          <label for="advertiserContactEmail">Email</label>
+          <input type="email" id="advertiserContactEmail" name="contact_email" placeholder="email@example.com">
+        </div>
+
+        <div class="form-group">
+          <label for="advertiserContactPhone">Telefone</label>
+          <input type="tel" id="advertiserContactPhone" name="contact_phone" placeholder="(11) 99999-9999">
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btnCancelModal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar Anunciante</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL - EDITAR -->
+  <div id="modalEditAdvertiser" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Editar Anunciante</h2>
+        <button class="btn-close-modal" id="btnCloseEditModal">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <form id="formEditAdvertiser">
+        <input type="hidden" id="editAdvertiserId">
+
+        <div class="form-group">
+          <label for="editAdvertiserName">Nome do Anunciante *</label>
+          <input type="text" id="editAdvertiserName" required>
+        </div>
+
+        <div class="form-group">
+          <label for="editAdvertiserCategory">Categoria</label>
+          <input type="text" id="editAdvertiserCategory">
+        </div>
+
+        <div class="form-group">
+          <label for="editAdvertiserContactName">Nome do Contato</label>
+          <input type="text" id="editAdvertiserContactName">
+        </div>
+
+        <div class="form-group">
+          <label for="editAdvertiserContactEmail">Email</label>
+          <input type="email" id="editAdvertiserContactEmail">
+        </div>
+
+        <div class="form-group">
+          <label for="editAdvertiserContactPhone">Telefone</label>
+          <input type="tel" id="editAdvertiserContactPhone">
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btnCancelEditModal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/frontend/src/shared/config.js"></script>
+  <script src="/frontend/src/shared/utils.js"></script>
+  <script src="/frontend/src/shared/api-helpers.js"></script>
+  <script src="./advertisers.js"></script>
+</body>
+</html>

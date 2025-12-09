@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Conteúdo Dinâmico - Loopin Marketing Indoor</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/frontend/src/shared/theme.css">
+  <link rel="stylesheet" href="./dynamic-content.css">
+</head>
+<body>
+  <div id="sidebar-container"></div>
+
+  <div class="main-layout">
+    <main class="content-area">
+      <div class="page-header">
+        <div class="header-title">
+          <h1>Conteúdo Dinâmico</h1>
+          <p class="text-muted">Configure widgets de clima, notícias e tickers personalizados</p>
+        </div>
+        <button id="btnOpenModal" class="btn btn-primary">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          Novo Widget
+        </button>
+      </div>
+
+      <div class="filter-bar">
+        <div class="search-box">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" id="searchInput" placeholder="Buscar por nome...">
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Tipo</th>
+                <th>Status</th>
+                <th>Criado em</th>
+                <th style="text-align: right;">Ações</th>
+              </tr>
+            </thead>
+            <tbody id="widgetsList">
+              <tr>
+                <td colspan="5" class="table-loading">
+                  <div class="spinner-small"></div>
+                  Carregando widgets...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- MODAL - CRIAR WIDGET -->
+  <div id="modalNewWidget" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Novo Widget</h2>
+        <button class="btn-close-modal" id="btnCloseModal">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <form id="formNewWidget">
+        <div class="form-group">
+          <label for="widgetName">Nome do Widget</label>
+          <input type="text" id="widgetName" name="name" required placeholder="Ex: Clima São Paulo">
+        </div>
+
+        <div class="form-group">
+          <label for="widgetType">Tipo de Widget *</label>
+          <select id="widgetType" name="content_type" required>
+            <option value="">Selecione um tipo...</option>
+            <option value="weather">Clima</option>
+            <option value="news">Notícias</option>
+            <option value="ticker">Ticker</option>
+            <option value="html">HTML Customizado</option>
+          </select>
+        </div>
+
+        <div id="weatherConfig" class="widget-config hidden">
+          <div class="form-group">
+            <label for="weatherCity">Cidade</label>
+            <input type="text" id="weatherCity" placeholder="São Paulo">
+          </div>
+          <div class="form-group">
+            <label for="weatherInterval">Intervalo (segundos)</label>
+            <input type="number" id="weatherInterval" value="30" min="10">
+          </div>
+        </div>
+
+        <div id="newsConfig" class="widget-config hidden">
+          <div class="form-group">
+            <label for="newsCategory">Categoria</label>
+            <input type="text" id="newsCategory" placeholder="business, technology, etc">
+          </div>
+          <div class="form-group">
+            <label for="newsInterval">Intervalo (segundos)</label>
+            <input type="number" id="newsInterval" value="60" min="30">
+          </div>
+        </div>
+
+        <div id="tickerConfig" class="widget-config hidden">
+          <div class="form-group">
+            <label for="tickerText">Texto do Ticker</label>
+            <textarea id="tickerText" placeholder="Texto que será exibido..." style="height: 100px;"></textarea>
+          </div>
+          <div class="form-group">
+            <label for="tickerSpeed">Velocidade (pixels/s)</label>
+            <input type="number" id="tickerSpeed" value="50" min="10">
+          </div>
+        </div>
+
+        <div id="htmlConfig" class="widget-config hidden">
+          <div class="form-group">
+            <label for="htmlContent">Código HTML</label>
+            <textarea id="htmlContent" placeholder="<div>Seu HTML aqui</div>" style="height: 150px; font-family: monospace;"></textarea>
+          </div>
+        </div>
+
+        <div class="form-group checkbox-group">
+          <label>
+            <input type="checkbox" id="widgetActive" name="is_active" checked>
+            Ativar Widget
+          </label>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btnCancelModal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar Widget</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/frontend/src/shared/config.js"></script>
+  <script src="/frontend/src/shared/utils.js"></script>
+  <script src="/frontend/src/shared/api-helpers.js"></script>
+  <script src="./dynamic-content.js"></script>
+</body>
+</html>
