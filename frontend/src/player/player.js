@@ -1,19 +1,36 @@
-/* ==================== PLAYER.JS V2 ====================
-   Reprodutor de mídia para Loopin TV
-   Suporta: Campanhas (imagens/vídeos)
-   Status: FOCO EM MÍDIAS APENAS
+/* ==================== PLAYER.JS (FINAL v6.2 - AUTO VIDEO DURATION) ====================
+   - Feature: Vídeos tocam até o fim (ignoram tempo configurado).
+   - Fix Zumbis: Limpeza forçada do DOM.
+   - Offline First: Cache automático e reprodução sem internet.
+   - Status: Indicador de Wi-Fi.
 */
 
-// ==================== CONFIGURAÇÃO ====================
 const CONFIG = {
-  POLL_INTERVAL: 10000,      // 10s: Verifica se foi vinculado
-  CHECK_INTERVAL: 60000,     // 1 min: Atualiza playlist
-  PING_INTERVAL: 30000,      // 30s: Ping de status
-  WATCHDOG_TIMEOUT: 45000,   // 45s: Reinicia se travar
-  CACHE_NAME: 'loopin-v3'
+  POLL_INTERVAL: 10000,      // 10s: Intervalo de pareamento
+  CHECK_INTERVAL: 60000,     // 1 min: Verifica playlist
+  PING_INTERVAL: 30000,      // 30s: Ping online
+  WATCHDOG_TIMEOUT: 45000,   // 45s: Reinicia se travar (Resetado a cada slide)
+  CACHE_NAME: 'loopin-v21',  // Cache atualizado
+  FADE_TIME: 800             // Tempo da transição visual (ms)
 };
 
-// ==================== ESTADO GLOBAL ====================
+// Imagens de Fundo Padrão (Unsplash)
+const WEATHER_BG = {
+  day: {
+    clear: 'https://images.unsplash.com/photo-1622278612015-2f63cb280cf2?q=80&w=1920&fit=crop',
+    clouds: 'https://images.unsplash.com/photo-1594156563697-b9290b811341?q=80&w=1920&fit=crop',
+    rain: 'https://images.unsplash.com/photo-1515694346937-94d85e41e6f0?q=80&w=1920&fit=crop',
+    thunderstorm: 'https://images.unsplash.com/photo-1605727216801-e27ce1d0cc28?q=80&w=1920&fit=crop',
+    default: 'https://images.unsplash.com/photo-1601297183305-6df142704ea2?q=80&w=1920&fit=crop'
+  },
+  night: {
+    clear: 'https://images.unsplash.com/photo-1532978440754-0610dad4f220?q=80&w=1920&fit=crop',
+    clouds: 'https://images.unsplash.com/photo-1502485552307-889d71c4df3e?q=80&w=1920&fit=crop',
+    rain: 'https://images.unsplash.com/photo-1503435824048-a799a3a84bf7?q=80&w=1920&fit=crop',
+    default: 'https://images.unsplash.com/photo-1472552944129-b035e9ea48c8?q=80&w=1920&fit=crop'
+  }
+};
+
 const State = {
   deviceId: null,
   isRegistered: false,
@@ -22,35 +39,31 @@ const State = {
   playlist: [],
   currentIndex: -1,
   watchdogTimer: null,
-  settings: {}
+  settings: {},
+  realtimeSubscription: null
 };
 
-// ==================== BOOTSTRAP ====================
+// ==================== 1. BOOTSTRAP ====================
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('✅ Player iniciando...');
   setupMouseHider();
-  
-  // Gera Device ID
   let storedId = localStorage.getItem('loopin_device_id');
   if (!storedId) {
-    const randomSuffix = Math.random().toString(36).substring(2, 8).toUpperCase();
-    storedId = `TELA-${randomSuffix}`;
+    storedId = `TELA-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
     localStorage.setItem('loopin_device_id', storedId);
   }
-  
   State.deviceId = storedId;
   console.log(`🆔 Device ID: ${State.deviceId}`);
-
-  // Inicia verificação de registro
   checkAndStart();
 });
 
-// ==================== VERIFICAÇÃO E INÍCIO ====================
+// ==================== 2. INICIALIZAÇÃO ====================
 async function checkAndStart() {
-  console.log('🔄 Verificando se tela está vinculada...');
-  
+  startClock();
+  updateConnectionStatus();
+
+  // Modo Offline
   if (State.isOffline) {
-    console.warn('⚠️ Offline - tentando usar cache');
+    console.warn('⚠️ Offline Mode');
     const cached = localStorage.getItem('loopin_cached_playlist');
     if (cached) {
       State.playlist = JSON.parse(cached);
@@ -61,513 +74,531 @@ async function checkAndStart() {
     return;
   }
 
+  // Modo Online
   try {
     const { data: screen } = await supabaseClient
       .from('screens')
-      .select('id, active_playlist_id')
+      .select('id')
       .eq('device_id', State.deviceId)
       .maybeSingle();
 
     if (!screen) {
-      console.log('❌ Tela não vinculada. Exibindo código de pareamento.');
-      showPairingScreen();
+      document.getElementById('setupScreen').classList.remove('hidden');
+      document.getElementById('pairingCode').innerText = State.deviceId;
+      document.getElementById('playerContainer').classList.add('hidden');
       setTimeout(checkAndStart, CONFIG.POLL_INTERVAL);
       return;
     }
 
-    console.log('✅ TELA VINCULADA!');
     State.isRegistered = true;
-    hidePairingScreen();
+    document.getElementById('setupScreen').classList.add('hidden');
     startPlayback();
 
   } catch (err) {
-    console.error('❌ Erro ao verificar tela:', err);
     setTimeout(checkAndStart, CONFIG.POLL_INTERVAL);
   }
 }
 
-// ==================== INICIAR REPRODUÇÃO ====================
 async function startPlayback() {
+  // CHAMA A FUNÇÃO AQUI:
+  requestWakeLock(); 
+
   if (State.isPlaying) return;
-  
   State.isPlaying = true;
-  console.log('🚀 Iniciando reprodução');
   
-  showLoading('Carregando...');
-  startClock();
+  showLoading('Iniciando...');
 
   try {
-    // Carrega configurações
     await loadSettings();
+    await fetchPlaylist(true); 
+    setupRealtimeUpdates();
 
-    // Carrega playlist do servidor
-    await fetchPlaylist();
-    
-    // Se não tem playlist, espera
-    if (State.playlist.length === 0) {
-      console.warn('⚠️ Nenhuma campanha para reproduzir');
-      showLoading('Aguardando conteúdo...');
-      setTimeout(() => fetchPlaylist(), CONFIG.CHECK_INTERVAL);
-      return;
+    if (!document.getElementById('loadingScreen').classList.contains('hidden')) {
+        if (State.playlist.length > 0) {
+            hideLoading();
+            playNext();
+        } else {
+            showLoading('Aguardando conteúdo...');
+        }
     }
 
-    hideLoading();
-    playNext();
-
-    // Loops de atualização
-    setInterval(fetchPlaylist, CONFIG.CHECK_INTERVAL);
+    setInterval(() => fetchPlaylist(false), CONFIG.CHECK_INTERVAL);
     setInterval(sendPing, CONFIG.PING_INTERVAL);
 
   } catch (err) {
-    console.error('❌ Erro ao iniciar:', err);
-    showLoading('Erro. Reiniciando...');
-    setTimeout(() => window.location.reload(), 5000);
+    console.error('Fatal Error:', err);
+    setTimeout(() => window.location.reload(), 10000);
   }
 }
 
-// ==================== BUSCAR PLAYLIST ====================
-async function fetchPlaylist() {
+// ==================== 3. DOWNLOAD & CACHE ====================
+async function downloadAssets(items) {
+  if (!items || items.length === 0) return;
+  try {
+    const cache = await caches.open(CONFIG.CACHE_NAME);
+    const urlsToCache = [];
+
+    items.forEach(item => { if (item.url) urlsToCache.push(item.url); });
+
+    const customBg = State.settings.weather_backgrounds || {};
+    Object.values(customBg).forEach(url => { if(url) urlsToCache.push(url); });
+    Object.values(WEATHER_BG.day).forEach(url => urlsToCache.push(url));
+    Object.values(WEATHER_BG.night).forEach(url => urlsToCache.push(url));
+
+    const promises = urlsToCache.map(async (url) => {
+      try {
+        const match = await cache.match(url);
+        if (!match) await cache.add(url);
+      } catch (e) { }
+    });
+
+    await Promise.allSettled(promises);
+    console.log('✅ Cache offline sincronizado');
+  } catch (err) { 
+    console.warn('Erro cache:', err); 
+  }
+}
+
+// ==================== 4. BUSCA DE DADOS ====================
+function setupRealtimeUpdates() {
+  if (State.realtimeSubscription) return;
+  State.realtimeSubscription = supabaseClient
+    .channel('player-updates')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'playlist_items' }, () => fetchPlaylist(false))
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'screens', filter: `device_id=eq.${State.deviceId}` }, () => {
+      fetchPlaylist(false);
+      loadSettings();
+    })
+    .subscribe();
+}
+
+async function fetchPlaylist(isFirstLoad) {
   if (State.isOffline) return;
 
   try {
-    console.log('🔄 Atualizando playlist...');
-
-    // 1. Busca screen com playlist ativa
-    const { data: screen, error: screenErr } = await supabaseClient
+    const { data: screen } = await supabaseClient
       .from('screens')
       .select('active_playlist_id')
       .eq('device_id', State.deviceId)
       .maybeSingle();
 
-    if (screenErr || !screen?.active_playlist_id) {
-      console.warn('⚠️ Nenhuma playlist ativa');
-      return;
-    }
+    if (!screen?.active_playlist_id) return;
 
-    // 2. Busca items da playlist com JOIN
-    const { data: items, error: itemsErr } = await supabaseClient
+    // Campanhas
+    const { data: campaigns } = await supabaseClient
       .from('playlist_items')
-      .select(`
-        id,
-        campaign_id,
-        duration,
-        display_order,
-        campaigns!campaign_id (
-          id,
-          name,
-          media_url,
-          media_type,
-          duration_seconds
-        )
-      `)
+      .select(`id, campaign_id, duration, display_order, campaigns!campaign_id (id, name, media_url, media_type, duration_seconds)`)
       .eq('playlist_id', screen.active_playlist_id)
       .order('display_order', { ascending: true });
 
-    if (itemsErr) {
-      console.error('❌ Erro ao buscar items:', itemsErr);
-      return;
-    }
-
-    if (!items || items.length === 0) {
-      console.log('⚠️ Playlist vazia');
-      return;
-    }
-
-    // 3. Busca widgets também
-    const { data: widgets, error: widgetsErr } = await supabaseClient
+    // Widgets
+    const { data: widgets } = await supabaseClient
       .from('playlist_items')
-      .select(`
-        id,
-        widget_id,
-        duration,
-        display_order,
-        dynamic_contents!widget_id (
-          id,
-          name,
-          content_type,
-          configuration
-        )
-      `)
+      .select(`id, widget_id, duration, display_order, dynamic_contents!widget_id (id, name, content_type, configuration)`)
       .eq('playlist_id', screen.active_playlist_id)
       .order('display_order', { ascending: true });
 
-    // 4. Formata lista (CAMPANHAS + WIDGETS)
     const newList = [];
 
-    // Processa todos os items em ordem
-    for (const item of items) {
-      // Campanha
-      if (item.campaign_id && item.campaigns && item.campaigns.media_url) {
-        newList.push({
-          id: item.campaigns.id,
-          name: item.campaigns.name,
-          type: item.campaigns.media_type || 'image',
-          url: item.campaigns.media_url,
-          duration: item.duration || item.campaigns.duration_seconds || 10,
-          renderType: 'media'
-        });
-      }
+    if (campaigns) {
+      campaigns.forEach(item => {
+        if (item.campaigns && item.campaigns.media_url) {
+          newList.push({
+            id: item.campaigns.id,
+            name: item.campaigns.name,
+            type: 'media',
+            renderType: 'media',
+            url: item.campaigns.media_url,
+            mediaType: item.campaigns.media_type || 'image',
+            duration: item.duration || item.campaigns.duration_seconds || 10,
+            order: item.display_order
+          });
+        }
+      });
     }
 
-    // Processa widgets separadamente
-    if (widgets && !widgetsErr) {
-      for (const item of widgets) {
-        if (!item.widget_id || !item.dynamic_contents) continue;
+    if (widgets) {
+      widgets.forEach(item => {
+        if (item.dynamic_contents) {
+          const widget = item.dynamic_contents;
+          let config = {};
+          try { config = typeof widget.configuration === 'string' ? JSON.parse(widget.configuration) : (widget.configuration || {}); } catch(e){}
+          const type = widget.content_type?.toLowerCase() || '';
 
-        const widget = item.dynamic_contents;
-        let config = {};
-
-        try {
-          config = typeof widget.configuration === 'string'
-            ? JSON.parse(widget.configuration)
-            : (widget.configuration || {});
-        } catch (e) {
-          console.warn(`⚠️ Config inválida para ${widget.name}`);
-          continue;
-        }
-
-        const type = widget.content_type?.toLowerCase() || '';
-
-        // Widget de Texto
-        if (type === 'ticker' || type === 'text') {
-          if (config.text) {
+          if (['ticker', 'text', 'news'].includes(type)) {
+            const textContent = config.text || (type === 'news' ? `Notícias: ${config.category || 'Gerais'}` : 'Texto vazio');
             newList.push({
-              id: widget.id,
-              name: widget.name,
-              type: 'text',
-              text: config.text,
-              duration: item.duration || 15,
-              renderType: 'text',
-              bgColor: config.bg_color || '#000',
-              textColor: config.text_color || '#fff',
-              speed: config.speed || 50
+              id: widget.id, name: widget.name, renderType: 'text',
+              text: textContent,
+              bgColor: config.bg_color || '#000', textColor: config.text_color || '#fff',
+              duration: item.duration || 15, order: item.display_order
+            });
+          }
+          else if (['weather', 'clima'].includes(type)) {
+            newList.push({
+              id: widget.id, name: widget.name, renderType: 'weather',
+              city: config.city || 'São Paulo',
+              duration: item.duration || 15, order: item.display_order
+            });
+          }
+          else if (type === 'html') {
+            newList.push({
+              id: widget.id, name: widget.name, renderType: 'html',
+              html: config.html || '', duration: item.duration || 15, order: item.display_order
             });
           }
         }
+      });
+    }
 
-        // Widget de Clima
-        if (type === 'weather' || type === 'clima' || type === 'medias') {
-          newList.push({
-            id: widget.id,
-            name: widget.name,
-            type: 'weather',
-            city: config.city || 'São Paulo',
-            duration: item.duration || 15,
-            renderType: 'weather'
-          });
+    newList.sort((a, b) => a.order - b.order);
+
+    if (newList.length > 0) {
+      const isDifferent = JSON.stringify(newList) !== JSON.stringify(State.playlist);
+      if (isDifferent || isFirstLoad) {
+        console.log(`📦 Playlist: ${newList.length} itens`);
+        State.playlist = newList;
+        localStorage.setItem('loopin_cached_playlist', JSON.stringify(newList));
+        downloadAssets(newList); 
+
+        if (isFirstLoad && !document.getElementById('loadingScreen').classList.contains('hidden')) {
+          hideLoading();
+          playNext();
         }
       }
     }
-
-    // Ordena por display_order original
-    newList.sort((a, b) => {
-      const aOrder = items.concat(widgets || []).find(i => i.id === a.id)?.display_order || 0;
-      const bOrder = items.concat(widgets || []).find(i => i.id === b.id)?.display_order || 0;
-      return aOrder - bOrder;
-    });
-
-    console.log(`✅ ${newList.length} campanhas carregadas`);
-
-    if (JSON.stringify(newList) !== JSON.stringify(State.playlist)) {
-      State.playlist = newList;
-      localStorage.setItem('loopin_cached_playlist', JSON.stringify(newList));
-      console.log('💾 Playlist em cache');
-    }
-
-  } catch (err) {
-    console.error('❌ Erro ao buscar playlist:', err);
-  }
+  } catch (err) { console.error('Fetch error:', err); }
 }
 
-// ==================== REPRODUÇÃO ====================
+// ==================== 5. REPRODUÇÃO ====================
 async function playNext() {
   resetWatchdog();
 
-  // Se chegou no fim, recicla
-  if (State.currentIndex >= State.playlist.length - 1) {
-    State.currentIndex = -1;
-  }
-
-  State.currentIndex++;
-
-  // Se lista vazia
   if (State.playlist.length === 0) {
-    console.warn('⚠️ Playlist vazia');
     setTimeout(playNext, 3000);
     return;
   }
 
+  State.currentIndex = (State.currentIndex + 1) % State.playlist.length;
   const item = State.playlist[State.currentIndex];
-  console.log(`▶️ Reproduzindo (${State.currentIndex}/${State.playlist.length}): ${item.name}`);
 
-  // Alterna slots
+  console.log(`▶️ (${State.currentIndex + 1}/${State.playlist.length}) ${item.name} [${item.renderType}]`);
+
   const activeSlot = document.querySelector('.media-slot.active');
   const nextSlot = activeSlot.id === 'slot1' ? document.getElementById('slot2') : document.getElementById('slot1');
-  nextSlot.innerHTML = '';
+  
+  // Limpeza de segurança (evita zumbis antes de inserir)
+  nextSlot.innerHTML = ''; 
 
   try {
-    const item = State.playlist[State.currentIndex];
-    console.log(`▶️ Reproduzindo (${State.currentIndex}/${State.playlist.length}): ${item.name}`);
-
-    // Alterna slots
-    const activeSlot = document.querySelector('.media-slot.active');
-    const nextSlot = activeSlot.id === 'slot1' ? document.getElementById('slot2') : document.getElementById('slot1');
-    nextSlot.innerHTML = '';
-
-    // Renderiza baseado no tipo
     if (item.renderType === 'media') {
-      renderMedia(item, nextSlot, activeSlot);
+      await renderMedia(item, nextSlot, activeSlot);
     } else if (item.renderType === 'text') {
-      renderText(item, nextSlot, activeSlot);
+      renderTicker(item, nextSlot, activeSlot);
     } else if (item.renderType === 'weather') {
       renderWeather(item, nextSlot, activeSlot);
+    } else if (item.renderType === 'html') {
+      renderHTML(item, nextSlot, activeSlot);
     } else {
-      console.warn('⚠️ Tipo desconhecido:', item.renderType);
-      setTimeout(playNext, 2000);
+      playNext();
     }
-
-  } catch (err) {
-    console.error('❌ Erro na reprodução:', err);
-    setTimeout(playNext, 2000);
+  } catch (e) {
+    console.error('Erro render:', e);
+    playNext();
   }
 }
 
-// ==================== RENDERIZAÇÃO ====================
+// ==================== 6. RENDERIZADORES ====================
 
 async function renderMedia(item, nextSlot, activeSlot) {
   const src = await getCachedUrl(item.url);
 
-  if (item.type === 'video' || item.url.match(/\.(mp4|webm|mov)$/i)) {
-    console.log('🎬 Vídeo');
+  if (item.mediaType === 'video') {
     const video = document.createElement('video');
     video.src = src;
     video.muted = true;
     video.autoplay = true;
-    video.loop = true;
-    video.style.opacity = '0';
-
-    video.oncanplay = () => doTransition(activeSlot, nextSlot, item, video);
-    video.onerror = () => {
-      console.error('❌ Erro vídeo');
-      playNext();
+    video.playsInline = true;
+    
+    // --- MUDANÇA: Lógica de Reprodução Completa ---
+    // 1. Desliga o loop para que o evento 'ended' funcione
+    video.loop = false; 
+    
+    // 2. Quando acabar, chama o próximo
+    video.onended = () => {
+        console.log('🎬 Vídeo finalizado, avançando...');
+        playNext();
     };
 
+    video.style.opacity = '0';
+    video.oncanplay = () => doTransition(activeSlot, nextSlot, item, video);
+    
+    // Fallback de erro
+    video.onerror = () => { console.error('Erro vídeo'); playNext(); };
+    
     nextSlot.appendChild(video);
 
   } else {
-    console.log('🖼️ Imagem');
+    // IMAGEM
     const img = document.createElement('img');
     img.src = src;
     img.style.opacity = '0';
-
     img.onload = () => doTransition(activeSlot, nextSlot, item, null);
-    img.onerror = () => {
-      console.error('❌ Erro imagem');
-      playNext();
-    };
-
+    img.onerror = () => playNext();
     nextSlot.appendChild(img);
   }
 }
 
-function renderText(item, nextSlot, activeSlot) {
-  console.log('📝 Texto');
-  
-  const container = document.createElement('div');
-  container.style.cssText = `
-    width: 100%;
-    height: 100%;
-    background: ${item.bgColor || '#000'};
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 60px;
-    box-sizing: border-box;
-    opacity: 0;
-  `;
-
-  const text = document.createElement('div');
-  text.style.cssText = `
-    color: ${item.textColor || '#fff'};
-    font-size: 3.5rem;
-    text-align: center;
-    font-weight: 700;
-    line-height: 1.3;
-    word-wrap: break-word;
-    max-width: 90%;
-  `;
-  text.innerText = item.text;
-
-  container.appendChild(text);
-  nextSlot.appendChild(container);
-  
+function renderTicker(item, nextSlot, activeSlot) {
+  const div = document.createElement('div');
+  div.className = 'ticker-slide';
+  div.style.background = item.bgColor || '#1A202C';
+  div.style.opacity = '0';
+  div.innerHTML = `<div class="ticker-content" style="color:${item.textColor || '#fff'}">${item.text}</div>`;
+  nextSlot.appendChild(div);
   doTransition(activeSlot, nextSlot, item, null);
 }
 
-function renderWeather(item, nextSlot, activeSlot) {
-  console.log('🌤️ Clima');
+// ==================== WIDGET CLIMA (COM SUPORTE A VÍDEO) ====================
+async function renderWeather(item, nextSlot, activeSlot) {
+  const city = item.city || 'São Paulo';
   
-  const container = document.createElement('div');
-  container.style.cssText = `
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-family: 'Inter', sans-serif;
-    padding: 40px;
-    box-sizing: border-box;
-    opacity: 0;
-  `;
+  const wrapper = document.createElement('div');
+  wrapper.className = 'weather-slide';
+  wrapper.style.opacity = '0';
 
-  const title = document.createElement('h1');
-  title.style.cssText = `
-    font-size: 2.5rem;
-    margin: 0 0 20px 0;
-    text-transform: uppercase;
-    letter-spacing: 2px;
+  // Estrutura inicial (Overlay e Card ficam por cima)
+  wrapper.innerHTML = `
+    <div class="weather-overlay"></div>
+    <div class="weather-card">
+      <p class="weather-subtitle">Previsão do Tempo</p>
+      <h1 class="weather-city">${city}</h1>
+      <div class="weather-main">
+        <img class="weather-icon-large" src="" style="display:none">
+        <div class="weather-temp">--°</div>
+      </div>
+      <p class="weather-description">Atualizando...</p>
+      <div class="weather-grid">
+        <div class="weather-item">💧 <span class="hum">--%</span></div>
+        <div class="weather-item">💨 <span class="wind">-- km/h</span></div>
+      </div>
+    </div>
   `;
-  title.innerText = 'Previsão do Tempo';
-
-  const city = document.createElement('h2');
-  city.style.cssText = `
-    font-size: 2rem;
-    margin: 0 0 30px 0;
-    font-weight: 400;
-  `;
-  city.innerText = item.city;
-
-  const info = document.createElement('p');
-  info.style.cssText = `
-    font-size: 1.2rem;
-    margin: 0;
-    opacity: 0.9;
-  `;
-  info.innerText = '🔄 Carregando...';
-
-  container.appendChild(title);
-  container.appendChild(city);
-  container.appendChild(info);
-  nextSlot.appendChild(container);
   
+  nextSlot.appendChild(wrapper);
   doTransition(activeSlot, nextSlot, item, null);
 
-  // Carrega clima real em background
-  if (State.settings?.api_weather_key) {
-    fetch(`https://api.openweathermap.org/data/2.5/weather?q=${item.city}&units=metric&lang=pt_br&appid=${State.settings.api_weather_key}`)
-      .then(r => r.json())
-      .then(data => {
-        if (data.main) {
-          info.innerText = `🌡️ ${Math.round(data.main.temp)}°C | 💨 ${data.wind.speed.toFixed(1)}m/s | 💧 ${data.main.humidity}% | ${data.weather[0].main}`;
-        }
-      })
-      .catch(() => {});
-  }
-}
+  // Função interna para aplicar o fundo (Vídeo ou Imagem)
+  const applyBackground = async (url) => {
+    // Verifica se é cache ou link direto
+    const src = await getCachedUrl(url);
+    const isVideo = url.match(/\.(mp4|webm|mov)$/i); // Verifica extensão
 
-async function getCachedUrl(url) {
-  try {
-    const cache = await caches.open(CONFIG.CACHE_NAME);
-    const resp = await cache.match(url);
-    
-    if (resp) {
-      console.log('✅ Usando cache:', url);
-      return URL.createObjectURL(await resp.blob());
+    // Remove fundos anteriores se houver
+    const oldVideo = wrapper.querySelector('.weather-bg-video');
+    if (oldVideo) oldVideo.remove();
+
+    if (isVideo) {
+      // É VÍDEO: Cria elemento
+      const video = document.createElement('video');
+      video.className = 'weather-bg-video';
+      video.src = src;
+      video.muted = true;
+      video.autoplay = true;
+      video.loop = true;
+      video.playsInline = true;
+      
+      // Insere como primeiro filho (atrás do overlay)
+      wrapper.insertBefore(video, wrapper.firstChild);
+      wrapper.style.backgroundImage = 'none'; // Remove imagem
+      
+    } else {
+      // É IMAGEM: Usa CSS padrão
+      wrapper.style.backgroundImage = `url('${src}')`;
     }
+  };
+
+  // Preenche dados e define fundo
+  const fillData = (data) => {
+    const card = nextSlot.querySelector('.weather-card');
+    if (!card || !data.main) return;
+
+    const isNight = data.weather[0].icon.includes('n');
+    const id = data.weather[0].id;
+    const customBg = State.settings.weather_backgrounds || {};
     
-    console.log('⬇️ Baixando:', url);
-    return url;
-  } catch (err) {
-    console.error('⚠️ Erro no cache:', err);
-    return url;
+    // Define URL padrão (Imagem)
+    let bgUrl = isNight ? WEATHER_BG.night.default : WEATHER_BG.day.clear;
+
+    // Lógica de Prioridade (Customizado > Padrão)
+    if (id >= 200 && id < 300) bgUrl = isNight ? (customBg.night_rain || WEATHER_BG.night.thunderstorm) : (customBg.day_storm || WEATHER_BG.day.thunderstorm);
+    else if (id >= 300 && id < 600) bgUrl = isNight ? (customBg.night_rain || WEATHER_BG.night.rain) : (customBg.day_rain || WEATHER_BG.day.rain);
+    else if (id >= 801) bgUrl = isNight ? (customBg.night_clear || WEATHER_BG.night.clouds) : (customBg.day_clouds || WEATHER_BG.day.clouds);
+    else bgUrl = isNight ? (customBg.night_clear || WEATHER_BG.night.clear) : (customBg.day_clear || WEATHER_BG.day.clear);
+    
+    // Aplica o fundo (detecta se é vídeo/imagem dentro da função)
+    applyBackground(bgUrl);
+
+    // Preenche textos
+    card.querySelector('.weather-temp').innerText = Math.round(data.main.temp) + '°';
+    card.querySelector('.weather-description').innerText = data.weather[0].description;
+    card.querySelector('.hum').innerText = data.main.humidity + '%';
+    card.querySelector('.wind').innerText = Math.round(data.wind.speed * 3.6) + ' km/h';
+    
+    const icon = card.querySelector('.weather-icon-large');
+    icon.src = `https://openweathermap.org/img/wn/${data.weather[0].icon}@4x.png`;
+    icon.style.display = 'block';
+  };
+
+  // Lógica de Cache/API (Mantida igual)
+  const cacheKey = 'weather_last_data';
+  if (State.settings?.api_weather_key && !State.isOffline) {
+    const safeCity = encodeURIComponent(city.trim()) + ',BR';
+    const url = `https://api.openweathermap.org/data/2.5/weather?q=${safeCity}&units=metric&lang=pt_br&appid=${State.settings.api_weather_key}`;
+    
+    fetch(url).then(r => r.json()).then(data => {
+        if (data.main) { localStorage.setItem(cacheKey, JSON.stringify(data)); fillData(data); }
+      }).catch(() => { const c = localStorage.getItem(cacheKey); if(c) fillData(JSON.parse(c)); });
+  } else {
+    const c = localStorage.getItem(cacheKey); 
+    if(c) fillData(JSON.parse(c));
+    else {
+        wrapper.querySelector('.weather-description').innerText = "Sem dados offline";
+        // Fundo padrão se não tiver dados
+        applyBackground(WEATHER_BG.day.clear);
+    }
   }
 }
 
-// ==================== UI ====================
-function showPairingScreen() {
-  document.getElementById('setupScreen').classList.remove('hidden');
-  document.getElementById('pairingCode').innerText = State.deviceId;
-  document.getElementById('playerContainer').classList.add('hidden');
+function renderHTML(item, nextSlot, activeSlot) {
+  const div = document.createElement('div');
+  div.style.width = '100%'; div.style.height = '100%';
+  div.style.opacity = '0';
+  div.style.background = '#000'; // Fundo preto para cobrir vídeo
+  div.innerHTML = item.html;
+  nextSlot.appendChild(div);
+  doTransition(activeSlot, nextSlot, item, null);
 }
 
-function hidePairingScreen() {
-  document.getElementById('setupScreen').classList.add('hidden');
-}
+// ==================== 7. TRANSIÇÃO (LÓGICA HÍBRIDA) ====================
 
-function showLoading(text) {
-  document.getElementById('loadingText').innerText = text;
-  document.getElementById('loadingScreen').classList.remove('hidden');
-  document.getElementById('playerContainer').classList.add('hidden');
-}
+function doTransition(curr, next, item, vid) {
+  requestAnimationFrame(() => {
+    next.classList.add('active');
+    curr.classList.remove('active');
+    
+    // 1. Limpeza de Zumbis: Remove slide anterior do DOM após a transição
+    setTimeout(() => {
+        curr.innerHTML = '';
+    }, CONFIG.FADE_TIME + 200); 
 
-function hideLoading() {
-  document.getElementById('loadingScreen').classList.add('hidden');
-  document.getElementById('playerContainer').classList.remove('hidden');
-}
+    // 2. Lógica de Duração
+    if (vid) {
+      // É VÍDEO:
+      // Toca o vídeo e NÃO AGENDA playNext (deixa o evento 'ended' cuidar disso)
+      vid.style.opacity = 1;
+      vid.play().catch(() => playNext()); // Se falhar o play, pula
+      console.log(`🎬 Tocando vídeo (aguardando fim)...`);
+      
+    } else {
+      // É IMAGEM/WIDGET:
+      // Faz o Fade-In
+      const el = next.querySelector('.weather-slide, .ticker-slide, img, div');
+      if(el) { el.style.transition = 'opacity 0.5s ease-in-out'; el.style.opacity = 1; }
 
-function startClock() {
-  setInterval(() => {
-    const now = new Date();
-    document.getElementById('clockTime').innerText = now.toLocaleTimeString('pt-BR', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-    document.getElementById('clockDate').innerText = now.toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: 'short'
-    }).replace('.', '');
-  }, 1000);
-}
-
-function setupMouseHider() {
-  let timeout;
-  window.addEventListener('mousemove', () => {
-    document.body.classList.add('mouse-visible');
-    clearTimeout(timeout);
-    timeout = setTimeout(() => {
-      document.body.classList.remove('mouse-visible');
-    }, 3000);
+      // Agenda o próximo slide baseado no tempo configurado
+      let duration = (item.duration || 10) * 1000;
+      console.log(`⏱️ Próximo slide em ${duration/1000}s`);
+      setTimeout(playNext, duration);
+    }
   });
 }
 
-// ==================== UTILITÁRIOS ====================
-function resetWatchdog() {
-  if (State.watchdogTimer) clearTimeout(State.watchdogTimer);
-  State.watchdogTimer = setTimeout(() => {
-    console.warn('🐕 Watchdog: Reiniciando...');
-    window.location.reload();
-  }, CONFIG.WATCHDOG_TIMEOUT);
+// ==================== 8. UTILS ====================
+
+async function getCachedUrl(url) {
+  if(!url) return null;
+  try {
+    const cache = await caches.open(CONFIG.CACHE_NAME);
+    const resp = await cache.match(url);
+    if (resp) return URL.createObjectURL(await resp.blob());
+    return url;
+  } catch (err) { return url; }
 }
 
-async function sendPing() {
-  if (State.isOffline || !State.isRegistered) return;
-
+async function loadSettings() {
   try {
-    await supabaseClient
-      .from('screens')
-      .update({
-        last_ping: new Date().toISOString(),
-        status: 'online'
-      })
-      .eq('device_id', State.deviceId);
+    const { data: s } = await supabaseClient.from('screens').select('user_id').eq('device_id', State.deviceId).maybeSingle();
+    if (s) {
+      const { data: set } = await supabaseClient.from('settings').select('*').eq('user_id', s.user_id).maybeSingle();
+      if (set) {
+        State.settings = set;
+        if (set.organization_logo_url) {
+          const img = document.getElementById('orgLogo');
+          if(img) { img.src = set.organization_logo_url; img.classList.remove('hidden'); }
+        }
+      }
+    }
+  } catch (e) {}
+}
+
+function resetWatchdog() {
+  if (State.watchdogTimer) clearTimeout(State.watchdogTimer);
+  State.watchdogTimer = setTimeout(() => location.reload(), CONFIG.WATCHDOG_TIMEOUT);
+}
+
+function startClock() {
+  const topRight = document.querySelector('.widget-box.top-right');
+  if (topRight && !document.getElementById('wifiStatus')) {
+    const wifi = document.createElement('div');
+    wifi.id = 'wifiStatus';
+    wifi.className = 'wifi-offline';
+    wifi.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="1" y1="1" x2="23" y2="23"></line><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"></path><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"></path><path d="M10.71 5.05A16 16 0 0 1 22.58 9"></path><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg><span>OFFLINE</span>`;
+    topRight.insertBefore(wifi, topRight.firstChild);
+  }
+  setInterval(() => {
+    const n = new Date();
+    document.getElementById('clockTime').innerText = n.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+    document.getElementById('clockDate').innerText = n.toLocaleDateString('pt-BR', {day:'2-digit', month:'short'}).replace('.','');
+  }, 1000);
+}
+
+function updateConnectionStatus() {
+  const el = document.getElementById('wifiStatus');
+  if (!el) return;
+  if (State.isOffline) el.classList.add('visible');
+  else el.classList.remove('visible');
+}
+
+function showLoading(t) { document.getElementById('loadingText').innerText = t; document.getElementById('loadingScreen').classList.remove('hidden'); document.getElementById('playerContainer').classList.add('hidden'); }
+function hideLoading() { document.getElementById('loadingScreen').classList.add('hidden'); document.getElementById('playerContainer').classList.remove('hidden'); }
+function setupMouseHider() {
+  let t; window.addEventListener('mousemove', () => { document.body.classList.add('mouse-visible'); clearTimeout(t); t = setTimeout(() => document.body.classList.remove('mouse-visible'), 2000); });
+}
+async function sendPing() {
+  if (State.isRegistered && !State.isOffline) supabaseClient.from('screens').update({ last_ping: new Date(), status: 'online' }).eq('device_id', State.deviceId).then();
+}
+
+window.addEventListener('online', () => { State.isOffline = false; updateConnectionStatus(); if(State.isRegistered) fetchPlaylist(false); });
+window.addEventListener('offline', () => { State.isOffline = true; updateConnectionStatus(); });
+
+// ==================== FUNÇÃO EXTRA: MANTER TELA LIGADA ====================
+async function requestWakeLock() {
+  try {
+    if ('wakeLock' in navigator) {
+      let wakeLock = await navigator.wakeLock.request('screen');
+      console.log('💡 Tela mantida ligada (Wake Lock ativo)');
+      
+      // Se a tela minimizar e voltar, pede de novo
+      document.addEventListener('visibilitychange', async () => {
+        if (document.visibilityState === 'visible') {
+          wakeLock = await navigator.wakeLock.request('screen');
+        }
+      });
+    }
   } catch (err) {
-    console.warn('⚠️ Erro ao enviar ping:', err);
+    console.warn('⚠️ Wake Lock não suportado ou falhou:', err);
   }
 }
 
-// ==================== CONEXÃO ====================
-window.addEventListener('online', () => {
-  console.log('🌐 Voltou online');
-  State.isOffline = false;
-  if (State.isRegistered) fetchPlaylist();
-});
-
-window.addEventListener('offline', () => {
-  console.log('📴 Ficou offline');
-  State.isOffline = true;
-});
-
-console.log('✅ Player.js v2 carregado');
+console.log('✅ Player.js V6.2 (Auto Duration) Loaded');
